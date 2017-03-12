@@ -26,6 +26,7 @@ BUG FIXES:
  * provider/aws: Add the IPV6 cidr block to the vpc datasource [GH-12529]
  * provider/aws: Error on trying to recreate an existing customer gateway [GH-12501]
  * provider/aws: Prevent aws_dms_replication_task panic [GH-12539]
+ * provider/aws: output the task definition name when errors occur during refresh [GH-12609]
  * provider/azurerm: bug fix to prevent crashes during azurerm_container_service provisioning [GH-12516]
  * provider/cobbler: Fix Profile Repos [GH-12452]
  * provider/datadog: Update to datadog_monitor to use default values [GH-12497]
