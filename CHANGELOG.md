@@ -12,6 +12,7 @@ IMPROVEMENTS:
  * provider/azurerm: Add support for managed availability sets. [GH-12532]
  * provider/docker: added support for linux capabilities [GH-12045]
  * provider/ignition: Migrate all of the igition resources to data sources [GH-11851]
+ * provider/openstack: Set Availability Zone in Instances [GH-12610]
 
 BUG FIXES:
 
