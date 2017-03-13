@@ -29,6 +29,7 @@ BUG FIXES:
  * provider/aws: Prevent aws_dms_replication_task panic [GH-12539]
  * provider/aws: output the task definition name when errors occur during refresh [GH-12609]
  * provider/aws: Refresh iam saml provider from state on 404 [GH-12602]
+ * provider/aws: Add address, port, hosted_zone_id and endpoint for aws_db_instance datasource [GH-12623]
  * provider/azurerm: bug fix to prevent crashes during azurerm_container_service provisioning [GH-12516]
  * provider/cobbler: Fix Profile Repos [GH-12452]
  * provider/datadog: Update to datadog_monitor to use default values [GH-12497]
