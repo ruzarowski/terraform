@@ -9,6 +9,7 @@ FEATURES:
 IMPROVEMENTS:
 
  * provider/aws: Return errors from Elastic Beanstalk [GH-12425]
+ * provider/aws: Add support for ACM certificates to `api_gateway_domain_name` [GH-12592]
  * provider/azurerm: Add support for managed availability sets. [GH-12532]
  * provider/azurerm: Add support for extensions on virtual machine scale sets [GH-12124]
  * provider/docker: added support for linux capabilities [GH-12045]
