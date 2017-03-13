@@ -36,6 +36,7 @@ BUG FIXES:
  * provider/openstack: Handle cases where volumes are disabled [GH-12374]
  * provider/openstack: Toggle Creation of Default Security Group Rules [GH-12119]
  * provider/openstack: Change Port fixed_ip to a Set [GH-12613]
+ * provider/openstack: Add network_id to Network data source [GH-12615]
  * provider/rancher: Apply the set value for finish_upgrade to set to prevent recurring plans [GH-12545]
  * provider/statuscake: use default status code list when updating test [GH-12375]
 
