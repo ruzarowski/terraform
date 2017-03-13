@@ -30,6 +30,7 @@ BUG FIXES:
  * provider/aws: output the task definition name when errors occur during refresh [GH-12609]
  * provider/aws: Refresh iam saml provider from state on 404 [GH-12602]
  * provider/aws: Add address, port, hosted_zone_id and endpoint for aws_db_instance datasource [GH-12623]
+ * provider/aws: Allow recreation of `aws_opsworks_user_profile` when the `user_arn` is changed [GH-12595]
  * provider/azurerm: bug fix to prevent crashes during azurerm_container_service provisioning [GH-12516]
  * provider/cobbler: Fix Profile Repos [GH-12452]
  * provider/datadog: Update to datadog_monitor to use default values [GH-12497]
