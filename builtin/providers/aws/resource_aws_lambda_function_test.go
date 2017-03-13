@@ -261,6 +261,8 @@ func TestAccAWSLambdaFunction_localUpdate(t *testing.T) {
 	}
 	defer os.Remove(path)
 
+	rInt := acctest.RandInt()
+
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
@@ -270,7 +272,7 @@ func TestAccAWSLambdaFunction_localUpdate(t *testing.T) {
 				PreConfig: func() {
 					testAccCreateZipFromFiles(map[string]string{"test-fixtures/lambda_func.js": "lambda.js"}, zipFile)
 				},
-				Config: genAWSLambdaFunctionConfig_local(path),
+				Config: genAWSLambdaFunctionConfig_local(path, rInt),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAwsLambdaFunctionExists("aws_lambda_function.lambda_function_local", "tf_acc_lambda_name_local", &conf),
 					testAccCheckAwsLambdaFunctionName(&conf, "tf_acc_lambda_name_local"),
@@ -282,7 +284,7 @@ func TestAccAWSLambdaFunction_localUpdate(t *testing.T) {
 				PreConfig: func() {
 					testAccCreateZipFromFiles(map[string]string{"test-fixtures/lambda_func_modified.js": "lambda.js"}, zipFile)
 				},
-				Config: genAWSLambdaFunctionConfig_local(path),
+				Config: genAWSLambdaFunctionConfig_local(path, rInt),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAwsLambdaFunctionExists("aws_lambda_function.lambda_function_local", "tf_acc_lambda_name_local", &conf),
 					testAccCheckAwsLambdaFunctionName(&conf, "tf_acc_lambda_name_local"),
@@ -356,6 +358,8 @@ func TestAccAWSLambdaFunction_s3Update(t *testing.T) {
 	bucketName := fmt.Sprintf("tf-acc-lambda-s3-deployments-%d", randomInteger)
 	key := "lambda-func.zip"
 
+	rInt := acctest.RandInt()
+
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
@@ -366,7 +370,7 @@ func TestAccAWSLambdaFunction_s3Update(t *testing.T) {
 					// Upload 1st version
 					testAccCreateZipFromFiles(map[string]string{"test-fixtures/lambda_func.js": "lambda.js"}, zipFile)
 				},
-				Config: genAWSLambdaFunctionConfig_s3(bucketName, key, path),
+				Config: genAWSLambdaFunctionConfig_s3(bucketName, key, path, rInt),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAwsLambdaFunctionExists("aws_lambda_function.lambda_function_s3", "tf_acc_lambda_name_s3", &conf),
 					testAccCheckAwsLambdaFunctionName(&conf, "tf_acc_lambda_name_s3"),
@@ -380,12 +384,12 @@ func TestAccAWSLambdaFunction_s3Update(t *testing.T) {
 					// Upload 2nd version
 					testAccCreateZipFromFiles(map[string]string{"test-fixtures/lambda_func_modified.js": "lambda.js"}, zipFile)
 				},
-				Config: genAWSLambdaFunctionConfig_s3(bucketName, key, path),
+				Config: genAWSLambdaFunctionConfig_s3(bucketName, key, path, rInt),
 			},
 			// Extra step because of missing ComputedWhen
 			// See https://github.com/hashicorp/terraform/pull/4846 & https://github.com/hashicorp/terraform/pull/5330
 			{
-				Config: genAWSLambdaFunctionConfig_s3(bucketName, key, path),
+				Config: genAWSLambdaFunctionConfig_s3(bucketName, key, path, rInt),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAwsLambdaFunctionExists("aws_lambda_function.lambda_function_s3", "tf_acc_lambda_name_s3", &conf),
 					testAccCheckAwsLambdaFunctionName(&conf, "tf_acc_lambda_name_s3"),
@@ -1040,7 +1044,7 @@ resource "aws_lambda_function" "lambda_function_test" {
 
 const testAccAWSLambdaFunctionConfig_local_tpl = `
 resource "aws_iam_role" "iam_for_lambda" {
-    name = "iam_for_lambda"
+    name = "iam_for_lambda_%d"
     assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -1067,8 +1071,8 @@ resource "aws_lambda_function" "lambda_function_local" {
 }
 `
 
-func genAWSLambdaFunctionConfig_local(filePath string) string {
-	return fmt.Sprintf(testAccAWSLambdaFunctionConfig_local_tpl,
+func genAWSLambdaFunctionConfig_local(filePath string, rInt int) string {
+	return fmt.Sprintf(testAccAWSLambdaFunctionConfig_local_tpl, rInt,
 		filePath, filePath)
 }
 
@@ -1121,7 +1125,7 @@ resource "aws_s3_bucket_object" "o" {
     etag = "${md5(file("%s"))}"
 }
 resource "aws_iam_role" "iam_for_lambda" {
-    name = "iam_for_lambda"
+    name = "iam_for_lambda_%d"
     assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -1149,9 +1153,9 @@ resource "aws_lambda_function" "lambda_function_s3" {
 }
 `
 
-func genAWSLambdaFunctionConfig_s3(bucket, key, path string) string {
+func genAWSLambdaFunctionConfig_s3(bucket, key, path string, rInt int) string {
 	return fmt.Sprintf(testAccAWSLambdaFunctionConfig_s3_tpl,
-		bucket, key, path, path)
+		bucket, key, path, path, rInt)
 }
 
 func testAccAWSLambdaFunctionConfig_s3_unversioned_tpl(rName, bucketName, key, path string) string {
