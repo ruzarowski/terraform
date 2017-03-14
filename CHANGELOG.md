@@ -16,6 +16,7 @@ IMPROVEMENTS:
  * provider/aws: Add support for IPv6 to aws_default_route_table [GH-12642]
  * provider/aws: Add support for IPv6 to aws_network_acl [GH-12641]
  * provider/aws: Add support for IPv6 in aws_route [GH-12639]
+ * provider/aws: Add support for IPv6 to aws_security_group [GH-12655]
  * provider/azurerm: Add support for managed availability sets. [GH-12532]
  * provider/azurerm: Add support for extensions on virtual machine scale sets [GH-12124]
  * provider/docker: added support for linux capabilities [GH-12045]
