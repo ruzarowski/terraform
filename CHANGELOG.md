@@ -12,6 +12,7 @@ IMPROVEMENTS:
  * provider/aws: Add support for ACM certificates to `api_gateway_domain_name` [GH-12592]
  * provider/aws: Add support for IPv6 to aws_security_group_rule [GH-12645]
  * provider/aws: Add IPv6 Support to aws_route_table [GH-12640]
+ * provider/aws: Add support for IPv6 to aws_network_acl_rule [GH-12644]
  * provider/azurerm: Add support for managed availability sets. [GH-12532]
  * provider/azurerm: Add support for extensions on virtual machine scale sets [GH-12124]
  * provider/docker: added support for linux capabilities [GH-12045]
