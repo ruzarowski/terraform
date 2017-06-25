@@ -278,6 +278,13 @@ func resourceContainerCluster() *schema.Resource {
 							Elem:     schema.TypeString,
 						},
 
+						"tags": &schema.Schema{
+							Type:     schema.TypeList,
+							Optional: true,
+							ForceNew: true,
+							Elem:     &schema.Schema{Type: schema.TypeString},
+						},
+
 						"image_type": &schema.Schema{
 							Type:     schema.TypeString,
 							Optional: true,
@@ -319,6 +326,78 @@ func resourceContainerCluster() *schema.Resource {
 							Type:     schema.TypeString,
 							Optional: true,
 							ForceNew: true,
+						},
+
+						"autoscaling": &schema.Schema{
+							Type:     schema.TypeList,
+							Optional: true,
+							Computed: true,
+							ForceNew: true,
+							MaxItems: 1,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"enabled": &schema.Schema{
+										Type:     schema.TypeBool,
+										Optional: false,
+										Default:  false,
+										Computed: true,
+										ForceNew: true,
+									},
+									"min_node_count": &schema.Schema{
+										Type:     schema.TypeInt,
+										Optional: false,
+										Default:  1,
+										Computed: true,
+										ForceNew: true,
+										ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
+											value := v.(int)
+											if value < 0 {
+												errors = append(errors, fmt.Errorf("%q cannot be negative", k))
+											}
+											return
+										},
+									},
+									"max_node_count": &schema.Schema{
+										Type:     schema.TypeInt,
+										Optional: false,
+										Default:  1,
+										Computed: true,
+										ForceNew: true,
+										ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
+											value := v.(int)
+											if value < 0 {
+												errors = append(errors, fmt.Errorf("%q cannot be negative", k))
+											}
+											return
+										},
+									},
+								},
+							},
+						},
+						"management": &schema.Schema{
+							Type:     schema.TypeList,
+							Optional: true,
+							Computed: true,
+							ForceNew: true,
+							MaxItems: 1,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"auto_upgrade": &schema.Schema{
+										Type:     schema.TypeBool,
+										Optional: true,
+										Default:  false,
+										Computed: true,
+										ForceNew: true,
+									},
+									"auto_repair": &schema.Schema{
+										Type:     schema.TypeBool,
+										Optional: true,
+										Default:  false,
+										Computed: true,
+										ForceNew: true,
+									},
+								},
+							},
 						},
 					},
 				},
@@ -465,6 +544,15 @@ func resourceContainerClusterCreate(d *schema.ResourceData, meta interface{}) er
 			cluster.NodeConfig.Metadata = m
 		}
 
+		if v, ok := nodeConfig["tags"]; ok {
+			tags := []string{}
+			for _, v := range v.([]interface{}) {
+				tags = append(tags, v.(string))
+			}
+
+			cluster.NodeConfig.Tags = tags
+		}
+
 		if v, ok = nodeConfig["image_type"]; ok {
 			cluster.NodeConfig.ImageType = v.(string)
 		}
@@ -490,6 +578,23 @@ func resourceContainerClusterCreate(d *schema.ResourceData, meta interface{}) er
 			nodePool := &container.NodePool{
 				Name:             name,
 				InitialNodeCount: int64(nodeCount),
+			}
+
+			if v, ok := d.GetOk(prefix + ".autoscaling"); ok {
+				autoscaling := v.([]interface{})[0].(map[string]interface{})
+				nodePool.Autoscaling = &container.NodePoolAutoscaling{
+					Enabled: autoscaling["enabled"].(bool),
+					MinNodeCount: int64(autoscaling["min_node_count"].(int)),
+					MaxNodeCount: int64(autoscaling["max_node_count"].(int)),
+				}
+			}
+
+			if v, ok := d.GetOk(prefix + ".management"); ok {
+				management := v.([]interface{})[0].(map[string]interface{})
+				nodePool.Management = &container.NodeManagement{
+					AutoUpgrade: management["auto_upgrade"].(bool),
+					AutoRepair: management["auto_repair"].(bool),
+				}
 			}
 
 			nodePools = append(nodePools, nodePool)
@@ -682,6 +787,7 @@ func flattenClusterNodeConfig(c *container.NodeConfig) []map[string]interface{} 
 			"local_ssd_count": c.LocalSsdCount,
 			"service_account": c.ServiceAccount,
 			"metadata":        c.Metadata,
+			"tags":            c.Tags,
 			"image_type":      c.ImageType,
 		},
 	}
@@ -703,6 +809,8 @@ func flattenClusterNodePools(d *schema.ResourceData, c []*container.NodePool) []
 			"name":               np.Name,
 			"name_prefix":        d.Get(fmt.Sprintf("node_pool.%d.name_prefix", i)),
 			"initial_node_count": np.InitialNodeCount,
+			"autoscaling":        np.Autoscaling,
+			"management":         np.Management,
 		}
 		nodePools = append(nodePools, nodePool)
 	}

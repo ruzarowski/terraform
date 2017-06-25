@@ -135,6 +135,8 @@ which the cluster's instances are launched
 * `metadata` - (Optional) The metadata key/value pairs assigned to instances in
     the cluster.
 
+* `tags` - (Optional) Tags to be set on each cluster node.
+
 * `image_type` - (Optional) The image type to use for this node.
 
 **Addons Config** supports the following addons:
@@ -167,6 +169,16 @@ addons_config {
 
 * `name_prefix` - (Optional) Creates a unique name for the node pool beginning
     with the specified prefix. Conflicts with `name`.
+
+* `autoscaling` - (Optional) Autoscaling settings for this Node Pool
+
+**Node Pool Autoscaling** supports the following arguments:
+
+* `enabled` - (Required) Enable autoscaling feature for this node pool
+
+* `min_node_count` - (Required) Minimum number of nodes in this pool if autoscaling is enabled.
+
+* `max_node_count` - (Required) Maximum number of nodes in this pool if autoscaling is enabled.
 
 ## Attributes Reference
 

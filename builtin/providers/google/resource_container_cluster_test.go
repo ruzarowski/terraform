@@ -267,6 +267,7 @@ func testAccCheckContainerCluster(n string) resource.TestCheckFunc {
 			{"node_config.0.oauth_scopes", cluster.NodeConfig.OauthScopes},
 			{"node_config.0.service_account", cluster.NodeConfig.ServiceAccount},
 			{"node_config.0.metadata", cluster.NodeConfig.Metadata},
+			{"node_config.0.tags", cluster.NodeConfig.Tags},
 			{"node_config.0.image_type", cluster.NodeConfig.ImageType},
 			{"node_version", cluster.CurrentNodeVersion},
 		}

@@ -21,6 +21,11 @@ resource "google_container_node_pool" "np" {
   zone               = "us-central1-a"
   cluster            = "${google_container_cluster.primary.name}"
   initial_node_count = 3
+  autoscaling {
+    enabled = true
+    min_node_count = 1
+    max_node_count = 3
+  }
 }
 
 resource "google_container_cluster" "primary" {
@@ -67,3 +72,13 @@ resource "google_container_cluster" "primary" {
 
 * `name_prefix` - (Optional) Creates a unique name for the node pool beginning
     with the specified prefix. Conflicts with `name`.
+
+* `autoscaling` - (Optional) Autoscaling settings for this Node Pool
+
+**Node Pool Autoscaling** supports the following arguments:
+
+* `enabled` - (Required) Enable autoscaling feature for this node pool
+
+* `min_node_count` - (Required) Minimum number of nodes in this pool if autoscaling is enabled.
+
+* `max_node_count` - (Required) Maximum number of nodes in this pool if autoscaling is enabled.

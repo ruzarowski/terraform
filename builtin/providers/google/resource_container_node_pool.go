@@ -55,6 +55,78 @@ func resourceContainerNodePool() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
+
+			"autoscaling": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Computed: true,
+				ForceNew: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"enabled": &schema.Schema{
+							Type:     schema.TypeBool,
+							Optional: false,
+							Default:  false,
+							Computed: true,
+							ForceNew: true,
+						},
+						"min_node_count": &schema.Schema{
+							Type:     schema.TypeInt,
+							Optional: false,
+							Default:  1,
+							Computed: true,
+							ForceNew: true,
+							ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
+								value := v.(int)
+								if value < 0 {
+									errors = append(errors, fmt.Errorf("%q cannot be negative", k))
+								}
+								return
+							},
+						},
+						"max_node_count": &schema.Schema{
+							Type:     schema.TypeInt,
+							Optional: false,
+							Default:  1,
+							Computed: true,
+							ForceNew: true,
+							ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
+								value := v.(int)
+								if value < 0 {
+									errors = append(errors, fmt.Errorf("%q cannot be negative", k))
+								}
+								return
+							},
+						},
+					},
+				},
+			},
+			"management": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Computed: true,
+				ForceNew: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"auto_upgrade": &schema.Schema{
+							Type:     schema.TypeBool,
+							Optional: true,
+							Default:  false,
+							Computed: true,
+							ForceNew: true,
+						},
+						"auto_repair": &schema.Schema{
+							Type:     schema.TypeBool,
+							Optional: true,
+							Default:  false,
+							Computed: true,
+							ForceNew: true,
+						},
+					},
+				},
+			},
 		},
 	}
 }
@@ -83,6 +155,23 @@ func resourceContainerNodePoolCreate(d *schema.ResourceData, meta interface{}) e
 	nodePool := &container.NodePool{
 		Name:             name,
 		InitialNodeCount: int64(nodeCount),
+	}
+
+	if v, ok := d.GetOk("autoscaling"); ok {
+		autoscaling := v.([]interface{})[0].(map[string]interface{})
+		nodePool.Autoscaling = &container.NodePoolAutoscaling{
+			Enabled: autoscaling["enabled"].(bool),
+			MinNodeCount: int64(autoscaling["min_node_count"].(int)),
+			MaxNodeCount: int64(autoscaling["max_node_count"].(int)),
+		}
+	}
+
+	if v, ok := d.GetOk("management"); ok {
+		management := v.([]interface{})[0].(map[string]interface{})
+		nodePool.Management = &container.NodeManagement{
+			AutoUpgrade: management["auto_upgrade"].(bool),
+			AutoRepair: management["auto_repair"].(bool),
+		}
 	}
 
 	req := &container.CreateNodePoolRequest{
@@ -129,6 +218,8 @@ func resourceContainerNodePoolRead(d *schema.ResourceData, meta interface{}) err
 
 	d.Set("name", nodePool.Name)
 	d.Set("initial_node_count", nodePool.InitialNodeCount)
+	d.Set("autoscaling", nodePool.Autoscaling)
+	d.Set("management", nodePool.Management)
 
 	return nil
 }
