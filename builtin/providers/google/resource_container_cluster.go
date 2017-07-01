@@ -95,7 +95,9 @@ func resourceContainerCluster() *schema.Resource {
 			"initial_node_count": &schema.Schema{
 				Type:     schema.TypeInt,
 				Optional: true,
-				ForceNew: true,
+				Computed: true,
+				ConflictsWith: []string{"node_pool"},
+				ForceNew: false,
 			},
 
 			"additional_zones": &schema.Schema{
@@ -209,6 +211,7 @@ func resourceContainerCluster() *schema.Resource {
 				Type:     schema.TypeList,
 				Optional: true,
 				Computed: true,
+				ConflictsWith: []string{"node_pool"},
 				ForceNew: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
@@ -328,6 +331,96 @@ func resourceContainerCluster() *schema.Resource {
 							ForceNew: true,
 						},
 
+						"config": &schema.Schema{
+							Type:     schema.TypeList,
+							Optional: true,
+							Computed: true,
+							ForceNew: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"machine_type": &schema.Schema{
+										Type:     schema.TypeString,
+										Optional: true,
+										Computed: true,
+										ForceNew: true,
+									},
+
+									"disk_size_gb": &schema.Schema{
+										Type:     schema.TypeInt,
+										Optional: true,
+										Computed: true,
+										ForceNew: true,
+										ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
+											value := v.(int)
+
+											if value < 10 {
+												errors = append(errors, fmt.Errorf(
+													"%q cannot be less than 10", k))
+											}
+											return
+										},
+									},
+
+									"local_ssd_count": &schema.Schema{
+										Type:     schema.TypeInt,
+										Optional: true,
+										Computed: true,
+										ForceNew: true,
+										ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
+											value := v.(int)
+
+											if value < 0 {
+												errors = append(errors, fmt.Errorf(
+													"%q cannot be negative", k))
+											}
+											return
+										},
+									},
+
+									"oauth_scopes": &schema.Schema{
+										Type:     schema.TypeList,
+										Optional: true,
+										Computed: true,
+										ForceNew: true,
+										Elem: &schema.Schema{
+											Type: schema.TypeString,
+											StateFunc: func(v interface{}) string {
+												return canonicalizeServiceScope(v.(string))
+											},
+										},
+									},
+
+									"service_account": &schema.Schema{
+										Type:     schema.TypeString,
+										Optional: true,
+										Computed: true,
+										ForceNew: true,
+									},
+
+									"metadata": &schema.Schema{
+										Type:     schema.TypeMap,
+										Optional: true,
+										ForceNew: true,
+										Elem:     schema.TypeString,
+									},
+
+									"tags": &schema.Schema{
+										Type:     schema.TypeList,
+										Optional: true,
+										ForceNew: true,
+										Elem:     &schema.Schema{Type: schema.TypeString},
+									},
+
+									"image_type": &schema.Schema{
+										Type:     schema.TypeString,
+										Optional: true,
+										Computed: true,
+										ForceNew: true,
+									},
+								},
+							},
+						},
+
 						"autoscaling": &schema.Schema{
 							Type:     schema.TypeList,
 							Optional: true,
@@ -338,38 +431,18 @@ func resourceContainerCluster() *schema.Resource {
 								Schema: map[string]*schema.Schema{
 									"enabled": &schema.Schema{
 										Type:     schema.TypeBool,
-										Optional: false,
-										Default:  false,
-										Computed: true,
+										Required: true,
 										ForceNew: true,
 									},
 									"min_node_count": &schema.Schema{
 										Type:     schema.TypeInt,
-										Optional: false,
-										Default:  1,
-										Computed: true,
+										Required: true,
 										ForceNew: true,
-										ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
-											value := v.(int)
-											if value < 0 {
-												errors = append(errors, fmt.Errorf("%q cannot be negative", k))
-											}
-											return
-										},
 									},
 									"max_node_count": &schema.Schema{
 										Type:     schema.TypeInt,
-										Optional: false,
-										Default:  1,
-										Computed: true,
+										Required: true,
 										ForceNew: true,
-										ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
-											value := v.(int)
-											if value < 0 {
-												errors = append(errors, fmt.Errorf("%q cannot be negative", k))
-											}
-											return
-										},
 									},
 								},
 							},
@@ -385,15 +458,11 @@ func resourceContainerCluster() *schema.Resource {
 									"auto_upgrade": &schema.Schema{
 										Type:     schema.TypeBool,
 										Optional: true,
-										Default:  false,
-										Computed: true,
 										ForceNew: true,
 									},
 									"auto_repair": &schema.Schema{
 										Type:     schema.TypeBool,
 										Optional: true,
-										Default:  false,
-										Computed: true,
 										ForceNew: true,
 									},
 								},
@@ -501,6 +570,7 @@ func resourceContainerClusterCreate(d *schema.ResourceData, meta interface{}) er
 			}
 		}
 	}
+
 	if v, ok := d.GetOk("node_config"); ok {
 		nodeConfigs := v.([]interface{})
 		if len(nodeConfigs) > 1 {
@@ -578,6 +648,63 @@ func resourceContainerClusterCreate(d *schema.ResourceData, meta interface{}) er
 			nodePool := &container.NodePool{
 				Name:             name,
 				InitialNodeCount: int64(nodeCount),
+			}
+
+			if v, ok := d.GetOk(prefix + ".config"); ok {
+				nodeConfigs := v.([]interface{})
+				if len(nodeConfigs) > 1 {
+					return fmt.Errorf("Cannot specify more than one nodepool config.")
+				}
+				nodeConfig := nodeConfigs[0].(map[string]interface{})
+
+				nodePool.Config = &container.NodeConfig{}
+
+				if v, ok = nodeConfig["machine_type"]; ok {
+					nodePool.Config.MachineType = v.(string)
+				}
+
+				if v, ok = nodeConfig["disk_size_gb"]; ok {
+					nodePool.Config.DiskSizeGb = int64(v.(int))
+				}
+
+				if v, ok = nodeConfig["local_ssd_count"]; ok {
+					nodePool.Config.LocalSsdCount = int64(v.(int))
+				}
+
+				if v, ok := nodeConfig["oauth_scopes"]; ok {
+					scopesList := v.([]interface{})
+					scopes := []string{}
+					for _, v := range scopesList {
+						scopes = append(scopes, canonicalizeServiceScope(v.(string)))
+					}
+
+					nodePool.Config.OauthScopes = scopes
+				}
+
+				if v, ok = nodeConfig["service_account"]; ok {
+					nodePool.Config.ServiceAccount = v.(string)
+				}
+
+				if v, ok = nodeConfig["metadata"]; ok {
+					m := make(map[string]string)
+					for k, val := range v.(map[string]interface{}) {
+						m[k] = val.(string)
+					}
+					nodePool.Config.Metadata = m
+				}
+
+				if v, ok := nodeConfig["tags"]; ok {
+					tags := []string{}
+					for _, v := range v.([]interface{}) {
+						tags = append(tags, v.(string))
+					}
+
+					nodePool.Config.Tags = tags
+				}
+
+				if v, ok = nodeConfig["image_type"]; ok {
+					nodePool.Config.ImageType = v.(string)
+				}
 			}
 
 			if v, ok := d.GetOk(prefix + ".autoscaling"); ok {
@@ -677,7 +804,7 @@ func resourceContainerClusterRead(d *schema.ResourceData, meta interface{}) erro
 	d.Set("monitoring_service", cluster.MonitoringService)
 	d.Set("network", d.Get("network").(string))
 	d.Set("subnetwork", cluster.Subnetwork)
-	d.Set("node_config", flattenClusterNodeConfig(cluster.NodeConfig))
+	d.Set("node_config", flattenNodeConfig(cluster.NodeConfig))
 	d.Set("node_pool", flattenClusterNodePools(d, cluster.NodePools))
 
 	if igUrls, err := getInstanceGroupUrlsFromManagerUrls(config, cluster.InstanceGroupUrls); err != nil {
@@ -704,6 +831,7 @@ func resourceContainerClusterUpdate(d *schema.ResourceData, meta interface{}) er
 	req := &container.UpdateClusterRequest{
 		Update: &container.ClusterUpdate{
 			DesiredNodeVersion: desiredNodeVersion,
+			DesiredMasterVersion: desiredNodeVersion,
 		},
 	}
 	op, err := config.clientContainer.Projects.Zones.Clusters.Update(
@@ -779,9 +907,10 @@ func getInstanceGroupUrlsFromManagerUrls(config *Config, igmUrls []string) ([]st
 	return instanceGroupURLs, nil
 }
 
-func flattenClusterNodeConfig(c *container.NodeConfig) []map[string]interface{} {
-	config := []map[string]interface{}{
-		map[string]interface{}{
+func flattenNodeConfig(c *container.NodeConfig) []map[string]interface{} {
+	configs := make([]map[string]interface{}, 0, 1)
+	if (c != nil) {
+		config := map[string]interface{}{
 			"machine_type":    c.MachineType,
 			"disk_size_gb":    c.DiskSizeGb,
 			"local_ssd_count": c.LocalSsdCount,
@@ -789,14 +918,13 @@ func flattenClusterNodeConfig(c *container.NodeConfig) []map[string]interface{} 
 			"metadata":        c.Metadata,
 			"tags":            c.Tags,
 			"image_type":      c.ImageType,
-		},
+		}
+		if len(c.OauthScopes) > 0 {
+			config["oauth_scopes"] = c.OauthScopes
+		}
+		configs = append(configs, config)
 	}
-
-	if len(c.OauthScopes) > 0 {
-		config[0]["oauth_scopes"] = c.OauthScopes
-	}
-
-	return config
+	return configs
 }
 
 func flattenClusterNodePools(d *schema.ResourceData, c []*container.NodePool) []map[string]interface{} {
@@ -809,11 +937,37 @@ func flattenClusterNodePools(d *schema.ResourceData, c []*container.NodePool) []
 			"name":               np.Name,
 			"name_prefix":        d.Get(fmt.Sprintf("node_pool.%d.name_prefix", i)),
 			"initial_node_count": np.InitialNodeCount,
-			"autoscaling":        np.Autoscaling,
-			"management":         np.Management,
+			"config":             flattenNodeConfig(np.Config),
+			"autoscaling":        flattenNodePoolAutoscaling(np.Autoscaling),
+			"management":         flattenNodeManagement(np.Management),
 		}
 		nodePools = append(nodePools, nodePool)
 	}
 
 	return nodePools
+}
+
+func flattenNodePoolAutoscaling(a *container.NodePoolAutoscaling) []map[string]interface{} {
+	autoscalings := make([]map[string]interface{}, 0, 1)
+	if (a != nil) {
+		autoscaling := map[string]interface{}{
+			"enabled":        a.Enabled,
+			"min_node_count": a.MinNodeCount,
+			"max_node_count": a.MaxNodeCount,
+		}
+		autoscalings = append(autoscalings, autoscaling)
+	}
+	return autoscalings
+}
+
+func flattenNodeManagement(m *container.NodeManagement) []map[string]interface{} {
+	managements := make([]map[string]interface{}, 0, 1)
+	if (m != nil) {
+		management := map[string]interface{}{
+			"auto_repair":  m.AutoRepair,
+			"auto_upgrade": m.AutoUpgrade,
+		}
+		managements = append(managements, management)
+	}
+	return managements
 }

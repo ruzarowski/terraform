@@ -170,7 +170,12 @@ addons_config {
 * `name_prefix` - (Optional) Creates a unique name for the node pool beginning
     with the specified prefix. Conflicts with `name`.
 
+* `config` - (Optional) The machine type and image to use for all nodes in
+    this pool (See cluster *Node Config for details*)
+
 * `autoscaling` - (Optional) Autoscaling settings for this Node Pool
+
+* `management` - (Optional) Node management settings for this pool
 
 **Node Pool Autoscaling** supports the following arguments:
 
@@ -179,6 +184,12 @@ addons_config {
 * `min_node_count` - (Required) Minimum number of nodes in this pool if autoscaling is enabled.
 
 * `max_node_count` - (Required) Maximum number of nodes in this pool if autoscaling is enabled.
+
+**Node Pool Management** supports the following arguments:
+
+* `auto_upgrade` - (Optional) Automatically upgrade cluster version (default: false)
+
+* `auto_repair` - (Optional) Automatically repair nodes failing healthcheck (default: false)
 
 ## Attributes Reference
 

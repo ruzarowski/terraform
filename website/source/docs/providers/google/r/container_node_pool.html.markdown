@@ -73,7 +73,45 @@ resource "google_container_cluster" "primary" {
 * `name_prefix` - (Optional) Creates a unique name for the node pool beginning
     with the specified prefix. Conflicts with `name`.
 
+* `config` - (Optional) The machine type and image to use for all nodes in
+    this pool
+
 * `autoscaling` - (Optional) Autoscaling settings for this Node Pool
+
+* `management` - (Optional) Node management settings for this pool
+
+**Node Config** supports the following arguments:
+
+* `machine_type` - (Optional) The name of a Google Compute Engine machine type.
+    Defaults to `n1-standard-1`.
+
+* `disk_size_gb` - (Optional) Size of the disk attached to each node, specified
+    in GB. The smallest allowed disk size is 10GB. Defaults to 100GB.
+
+* `local_ssd_count` - (Optional) The amount of local SSD disks that will be
+    attached to each cluster node. Defaults to 0.
+
+* `oauth_scopes` - (Optional) The set of Google API scopes to be made available
+    on all of the node VMs under the "default" service account. These can be
+    either FQDNs, or scope aliases. The following scopes are necessary to ensure
+    the correct functioning of the cluster:
+
+  * `compute-rw` (`https://www.googleapis.com/auth/compute`)
+  * `storage-ro` (`https://www.googleapis.com/auth/devstorage.read_only`)
+  * `logging-write` (`https://www.googleapis.com/auth/logging.write`),
+    if `logging_service` points to Google
+  * `monitoring` (`https://www.googleapis.com/auth/monitoring`),
+    if `monitoring_service` points to Google
+
+* `service_account` - (Optional) The service account to be used by the Node VMs.
+    If not specified, the "default" service account is used.
+
+* `metadata` - (Optional) The metadata key/value pairs assigned to instances in
+    the cluster.
+
+* `tags` - (Optional) Tags to be set on each cluster node.
+
+* `image_type` - (Optional) The image type to use for this node.
 
 **Node Pool Autoscaling** supports the following arguments:
 
@@ -82,3 +120,9 @@ resource "google_container_cluster" "primary" {
 * `min_node_count` - (Required) Minimum number of nodes in this pool if autoscaling is enabled.
 
 * `max_node_count` - (Required) Maximum number of nodes in this pool if autoscaling is enabled.
+
+**Node Pool Management** supports the following arguments:
+
+* `auto_upgrade` - (Optional) Automatically upgrade cluster version (default: false)
+
+* `auto_repair` - (Optional) Automatically repair nodes failing healthcheck (default: false)

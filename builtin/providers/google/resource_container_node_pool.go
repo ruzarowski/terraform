@@ -56,6 +56,96 @@ func resourceContainerNodePool() *schema.Resource {
 				ForceNew: true,
 			},
 
+			"config": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Computed: true,
+				ForceNew: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"machine_type": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
+							Computed: true,
+							ForceNew: true,
+						},
+
+						"disk_size_gb": &schema.Schema{
+							Type:     schema.TypeInt,
+							Optional: true,
+							Computed: true,
+							ForceNew: true,
+							ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
+								value := v.(int)
+
+								if value < 10 {
+									errors = append(errors, fmt.Errorf(
+										"%q cannot be less than 10", k))
+								}
+								return
+							},
+						},
+
+						"local_ssd_count": &schema.Schema{
+							Type:     schema.TypeInt,
+							Optional: true,
+							Computed: true,
+							ForceNew: true,
+							ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
+								value := v.(int)
+
+								if value < 0 {
+									errors = append(errors, fmt.Errorf(
+										"%q cannot be negative", k))
+								}
+								return
+							},
+						},
+
+						"oauth_scopes": &schema.Schema{
+							Type:     schema.TypeList,
+							Optional: true,
+							Computed: true,
+							ForceNew: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+								StateFunc: func(v interface{}) string {
+									return canonicalizeServiceScope(v.(string))
+								},
+							},
+						},
+
+						"service_account": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
+							Computed: true,
+							ForceNew: true,
+						},
+
+						"metadata": &schema.Schema{
+							Type:     schema.TypeMap,
+							Optional: true,
+							ForceNew: true,
+							Elem:     schema.TypeString,
+						},
+
+						"tags": &schema.Schema{
+							Type:     schema.TypeList,
+							Optional: true,
+							ForceNew: true,
+							Elem:     &schema.Schema{Type: schema.TypeString},
+						},
+
+						"image_type": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
+							Computed: true,
+							ForceNew: true,
+						},
+					},
+				},
+			},
+
 			"autoscaling": &schema.Schema{
 				Type:     schema.TypeList,
 				Optional: true,
@@ -66,38 +156,18 @@ func resourceContainerNodePool() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						"enabled": &schema.Schema{
 							Type:     schema.TypeBool,
-							Optional: false,
-							Default:  false,
-							Computed: true,
+							Required: true,
 							ForceNew: true,
 						},
 						"min_node_count": &schema.Schema{
 							Type:     schema.TypeInt,
-							Optional: false,
-							Default:  1,
-							Computed: true,
+							Required: true,
 							ForceNew: true,
-							ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
-								value := v.(int)
-								if value < 0 {
-									errors = append(errors, fmt.Errorf("%q cannot be negative", k))
-								}
-								return
-							},
 						},
 						"max_node_count": &schema.Schema{
 							Type:     schema.TypeInt,
-							Optional: false,
-							Default:  1,
-							Computed: true,
+							Required: true,
 							ForceNew: true,
-							ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
-								value := v.(int)
-								if value < 0 {
-									errors = append(errors, fmt.Errorf("%q cannot be negative", k))
-								}
-								return
-							},
 						},
 					},
 				},
@@ -113,15 +183,11 @@ func resourceContainerNodePool() *schema.Resource {
 						"auto_upgrade": &schema.Schema{
 							Type:     schema.TypeBool,
 							Optional: true,
-							Default:  false,
-							Computed: true,
 							ForceNew: true,
 						},
 						"auto_repair": &schema.Schema{
 							Type:     schema.TypeBool,
 							Optional: true,
-							Default:  false,
-							Computed: true,
 							ForceNew: true,
 						},
 					},
@@ -155,6 +221,63 @@ func resourceContainerNodePoolCreate(d *schema.ResourceData, meta interface{}) e
 	nodePool := &container.NodePool{
 		Name:             name,
 		InitialNodeCount: int64(nodeCount),
+	}
+
+	if v, ok := d.GetOk("config"); ok {
+		nodeConfigs := v.([]interface{})
+		if len(nodeConfigs) > 1 {
+			return fmt.Errorf("Cannot specify more than one node_config.")
+		}
+		nodeConfig := nodeConfigs[0].(map[string]interface{})
+
+		nodePool.Config = &container.NodeConfig{}
+
+		if v, ok = nodeConfig["machine_type"]; ok {
+			nodePool.Config.MachineType = v.(string)
+		}
+
+		if v, ok = nodeConfig["disk_size_gb"]; ok {
+			nodePool.Config.DiskSizeGb = int64(v.(int))
+		}
+
+		if v, ok = nodeConfig["local_ssd_count"]; ok {
+			nodePool.Config.LocalSsdCount = int64(v.(int))
+		}
+
+		if v, ok := nodeConfig["oauth_scopes"]; ok {
+			scopesList := v.([]interface{})
+			scopes := []string{}
+			for _, v := range scopesList {
+				scopes = append(scopes, canonicalizeServiceScope(v.(string)))
+			}
+
+			nodePool.Config.OauthScopes = scopes
+		}
+
+		if v, ok = nodeConfig["service_account"]; ok {
+			nodePool.Config.ServiceAccount = v.(string)
+		}
+
+		if v, ok = nodeConfig["metadata"]; ok {
+			m := make(map[string]string)
+			for k, val := range v.(map[string]interface{}) {
+				m[k] = val.(string)
+			}
+			nodePool.Config.Metadata = m
+		}
+
+		if v, ok := nodeConfig["tags"]; ok {
+			tags := []string{}
+			for _, v := range v.([]interface{}) {
+				tags = append(tags, v.(string))
+			}
+
+			nodePool.Config.Tags = tags
+		}
+
+		if v, ok = nodeConfig["image_type"]; ok {
+			nodePool.Config.ImageType = v.(string)
+		}
 	}
 
 	if v, ok := d.GetOk("autoscaling"); ok {
@@ -218,8 +341,9 @@ func resourceContainerNodePoolRead(d *schema.ResourceData, meta interface{}) err
 
 	d.Set("name", nodePool.Name)
 	d.Set("initial_node_count", nodePool.InitialNodeCount)
-	d.Set("autoscaling", nodePool.Autoscaling)
-	d.Set("management", nodePool.Management)
+	d.Set("config", flattenNodeConfig(nodePool.Config))
+	d.Set("autoscaling", flattenNodePoolAutoscaling(nodePool.Autoscaling))
+	d.Set("management", flattenNodeManagement(nodePool.Management))
 
 	return nil
 }
